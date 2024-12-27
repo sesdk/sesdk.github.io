@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JSSDK</title>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+      }
+
+      .content {
+        padding: 12px;
+        border-bottom: 1px solid #ddd;
+      }
+      .content .title {
+        margin-bottom: 10px;
+      }
+      .content .api {
+        display: flex;
+        justify-content: flex-start;
+        margin-bottom: 10px;
+      }
+      .btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 35%;
+        height: 32px;
+        background: #0066f2;
+        color: #fff;
+        border-radius: 2px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .input-name {
+        width: 100px;
+        margin-left: 10px;
+      }
+      .input {
+        flex: 1;
+        margin-left: 10px;
+      }
+      .link {
+        display: inline-flex;
+        width: 150px;
+        margin-right: 15px;
+      }
+      .test-btn {
+        margin-top: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div class="content">
+        <router-link data-ignore-track="true" class="link btn" to="/">首页</router-link>
+        <router-link data-ignore-track="true" class="link btn" to="/about">跳转about页面</router-link>
+        <router-link data-ignore-track="true" class="link btn" to="/info">跳转info页面</router-link>
+        <router-view></router-view>
+        <div
+          data-element-id="xxx"
+          data-ignore-track="false"
+          data-element-target-url="xxx"
+          data-custom-property="{a:1,b:2}"
+          class="btn test-btn"
+        >
+          测试按钮
+        </div>
+        <div
+          class="btn test-btn"
+        >
+          <a href="http://www.baidu.com">跳转外站按钮</a>
+        </div>
+      </div>
+      <div class="content" v-for="(item, key) in list" :key="item.title">
+        <div class="title">{{ item.title }}</div>
+        <div class="api" v-for="(api, index) in item.api" :key="api.name">
+          <div data-ignore-track="true" class="btn" @click="handleApi(key, index)">{{ api.name }}</div>
+          <input
+            v-if="api.namePlaceholder"
+            class="input-name"
+            :id="api.name + 'name'"
+            type="text"
+            data-ignore-track="true"
+            :placeholder="api.namePlaceholder"
+          />
+          <input
+            v-if="api.placeholder"
+            class="input"
+            :id="api.name"
+            type="text"
+            data-ignore-track="true"
+            :placeholder="api.placeholder"
+            :value="api.value || ''"
+          />
+        </div>
+      </div>
+    </div>
+  </body>
+  <script src="./web-cn-sesdk-umd.js"></script>
+  <script src="./sesdk-webabtest-plugin-umd.js"></script>
+  <script src="https://unpkg.com/vue@3.2.45/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/vue-router@4"></script>
+  <script>
+    const { createApp } = Vue;
+
+    const Home = { template: '<div>Home</div>' };
+    const About = { template: '<div>About</div>' };
+    const Info = { template: '<div>Info</div>' };
+
+    const routes = [
+      { path: '/', component: Home },
+      { path: '/about', component: About },
+      { path: '/info', component: Info },
+    ];
+
+    const router = VueRouter.createRouter({
+      // 4. 内部提供了 history 模式的实现。为了简单起见，我们在这里使用 hash 模式。
+      history: VueRouter.createWebHashHistory(),
+      routes, // `routes: routes` 的缩写
+    });
+
+    function showMsg(content) {
+      if (Object.prototype.toString.call(content) === '[object Promise]') {
+        content.then((c) => alert(c));
+      } else {
+        alert(content);
+      }
+    }
+
+    function testHandler(apiName, placeholder, namePlaceholder, objectParams, alertMsg) {
+      // 不需要输入参数
+      if (!placeholder) {
+        if (apiName === 'ready') {
+          return window.SESDK[apiName](() => {
+            console.log('ready callback is called');
+          });
+        }
+        const r = window.SESDK[apiName]();
+        return alertMsg && showMsg(r);
+      }
+      let params = document.getElementById(apiName).value;
+      // 参数需要转成对象
+      if (objectParams) {
+        try {
+          params = JSON.parse(params);
+        } catch (e) {
+          console.error('参数不是合法的json数据', params);
+        }
+      }
+      let r = null;
+      if (namePlaceholder) {
+        // 需要传递2个参数的
+        let nameValue = document.getElementById(apiName + 'name').value;
+        r = window.SESDK[apiName](nameValue, params);
+        return alertMsg && showMsg(r);
+      } else {
+        r = window.SESDK[apiName](params);
+      }
+
+      alertMsg && showMsg(r);
+    }
+
+    const app = createApp({
+      data() {
+        return {
+          list: [
+            // {
+            //   title: '插件',
+            //   api: [
+            //     { name: '加载在线参数插件', plugin: window.parametersPlugin},
+            //   ]
+            // },
+            // {
+            //   title: '初始化',
+            //   api: [
+            //     { name: 'init', objectParams: true, placeholder: 'SDK初始化参数(json)', value: JSON.stringify(defaultValue.init)},
+            //     { name: 'ready'}
+            //   ]
+            // },
+            {
+              title: '访客ID',
+              api: [
+                { name: 'setVisitorId', placeholder: '访客ID' },
+                { name: 'getVisitorId', alertMsg: true },
+              ],
+            },
+            {
+              title: '账号ID',
+              api: [
+                { name: 'login', placeholder: '用户的账号ID' },
+                { name: 'getAccountId', alertMsg: true },
+                { name: 'logout' },
+              ],
+            },
+            {
+              title: '公共事件属性',
+              api: [
+                { name: 'setSuperProperties', objectParams: true, placeholder: '属性值(json)' },
+                { name: 'unsetSuperProperty', placeholder: '属性名称' },
+                { name: 'clearSuperProperties' },
+              ],
+            },
+            {
+              title: '预置事件属性',
+              api: [
+                {
+                  name: 'setPresetEvent',
+                  objectParams: true,
+                  splitParams: true,
+                  namePlaceholder: '事件名称',
+                  placeholder: '属性值(json)',
+                },
+              ],
+            },
+            {
+              title: '预定义事件',
+              api: [
+                { name: 'trackAdImpression', objectParams: true, placeholder: '变现广告展示事件参数(json)' },
+                { name: 'trackAdClick', objectParams: true, placeholder: '变现广告点击事件参数(json)' },
+                { name: 'trackIAP', objectParams: true, placeholder: '应用内购买事件参数(json)' },
+                { name: 'trackAppAttr', objectParams: true, placeholder: '自归因安装事件参数(json)' },
+                { name: 'trackOrder', objectParams: true, placeholder: '订单事件参数(json)' },
+                { name: 'trackRegister', objectParams: true, placeholder: '注册事件参数(json)' },
+                { name: 'trackLogin', objectParams: true, placeholder: '登录事件参数(json)' },
+                { name: 'trackPageView' },
+                { name: 'trackPageClick', objectParams: true, placeholder: '点击元素信息(json)' },
+              ],
+            },
+            {
+              title: '自定义事件',
+              api: [
+                {
+                  name: 'track',
+                  objectParams: true,
+                  splitParams: true,
+                  namePlaceholder: '事件名称',
+                  placeholder: '自定义事件参数(json)',
+                },
+              ],
+            },
+            {
+              title: '时长事件',
+              api: [
+                { name: 'eventStart', placeholder: '事件名称' },
+                {
+                  name: 'eventFinish',
+                  objectParams: true,
+                  splitParams: true,
+                  namePlaceholder: '事件名称',
+                  placeholder: '结束计时事件参数(Object)',
+                },
+              ],
+            },
+            {
+              title: '用户属性',
+              api: [
+                { name: 'userInit', objectParams: true, placeholder: '用户属性参数(json)' },
+                { name: 'userUpdate', objectParams: true, placeholder: '用户属性参数(json)' },
+                { name: 'userAdd', objectParams: true, placeholder: '用户属性参数(json)' },
+                { name: 'userUnset', objectParams: true, placeholder: '用户属性参数key(Array)' },
+                { name: 'userAppend', objectParams: true, placeholder: '用户属性参数(json)' },
+                { name: 'userDelete', placeholder: 'userDeleteByAccountId或userDeleteByVisitorId' },
+              ],
+            },
+            {
+              title: '在线参数',
+              api: [
+                { name: 'setRemoteDefaultConfig', objectParams: true, placeholder: '默认配置(jsonArray)' },
+                { name: 'setRemoteConfigEventProperties', objectParams: true, placeholder: '事件自定义属性(json)' },
+                { name: 'setRemoteConfigUserProperties', objectParams: true, placeholder: '用户自定义属性(json)' },
+                { name: 'fastFetchRemoteConfig', placeholder: '在线参数key', alertMsg: true },
+                { name: 'asyncFetchRemoteConfig', placeholder: '在线参数key', alertMsg: true },
+              ],
+            },
+            {
+              title: '自动追踪API',
+              api: [
+                { name: 'setTrackPageView', objectParams: true, placeholder: '默认配置(jsonArray)' },
+                { name: 'setAutoTrack', objectParams: true, placeholder: '自动追踪开关配置(json)' },
+              ],
+            },
+            {
+              title: '其他相关API',
+              api: [
+                { name: 'setChannel', placeholder: '渠道值' },
+                { name: 'setReferrerTitle', placeholder: '来源页面标题' },
+              ],
+            },
+          ],
+        };
+      },
+      methods: {
+        handleApi(key, index) {
+          const { name, placeholder, namePlaceholder, objectParams, alertMsg, plugin } = this.list[key].api[index];
+          if (plugin) {
+            window.SESDK.use(plugin);
+          } else {
+            testHandler(name, placeholder, namePlaceholder, objectParams, alertMsg);
+          }
+        },
+      },
+    });
+    app.use(router);
+    app.mount('#app');
+
+    let initParams = {
+      appKey: '4c3e7d87ebac99cd',
+      userId: '1fca0a4b93fa7170',
+      config: {
+        isInApp: false,
+        logEnabled: true,
+        debugModel: false,
+        customDomain: '',
+        remoteConfig: {
+          enable: true,
+          mergeType: 0,
+          pollingInterval: 30,
+          customIDProperties: {},
+          customIDEventProperties: {},
+          customIDUserProperties: {},
+          customDomain: '',
+          requestTimeout: 5000,
+        },
+        multilinkTestConfig: {
+          enable: true,
+          isSetMask: true,
+          maskTimeoutCloseTime: 0.5,
+          customIDProperties: {},
+          customIDEventProperties: {},
+          customIDUserProperties: {},
+          requestTimeout: 5000,
+        },
+        autoTrackConfig: {
+          autoTrack: true,
+          autoTrackPageView: true,
+          autoTrackPageClick: true,
+          isTrackSinglePage: true,
+        },
+      },
+    };
+
+    let urlParams =
+      location.href
+        .split('?')?.[1]
+        ?.split('&')
+        ?.reduce((m, o) => {
+          let arr = o.split('=');
+          let v = arr[1];
+          try {
+            v = JSON.parse(v.replace(/\'|\'/g, '"'));
+          } catch (e) {
+            v = v;
+          }
+          m[arr[0]] = v;
+          return m;
+        }, {}) || {};
+
+    console.log('%c页面链接参数: ' + JSON.stringify(urlParams, null, 2), 'color: blue');
+
+    function renderInitParams(o, parent) {
+      Object.keys(o).forEach((k) => {
+        if (['config', 'remoteConfig', 'autoTrackConfig', 'multilinkTestConfig'].includes(k)) {
+          renderInitParams(o[k], k);
+        } else if (parent === 'remoteConfig' && k === 'customDomain') {
+          o[k] = urlParams[`${parent}.${k}`];
+        } else if (Object.keys(urlParams).includes(k)) {
+          o[k] = urlParams[k];
+        }
+      });
+    }
+    renderInitParams(initParams);
+    console.log('%cSDK初始化参数: ' + JSON.stringify(initParams, null, 2), 'color: red');
+    window.SESDK.use(window.webabtestPlugin);
+    window.SESDK.prevInit(true);
+    window.SESDK.init(initParams);
+  </script>
+</html>
